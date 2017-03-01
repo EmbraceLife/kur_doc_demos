@@ -270,3 +270,86 @@ https://avatars0.githubusercontent.com/u/7648333?v=3&s=30
 
 Adam Sypniewski @ajsyp2月 27 22:48
 There are a small handful of things that are not "pickleable" (like nested functions)
+
+
+-------------------
+
+2月 28 19:51
+@ajsyp do we have dropout functionality? I can't find it in the docs?
+dropout is essential right, from the lesson I took, it says dropout is better than max-pool, so I guess kur should have dropout as kur already has max/mean pool
+
+Adam Sypniewski @ajsyp 2月 28 21:59
+Dropout is in the bleeding edge Kur, yep! (Not the pip package yet.)
+I haven't had time to update the docs yet.
+So you use it very simply, like this:
+model:
+  # Other things ...
+
+  - dropout: 0.2
+
+  # More things
+Jut put as many dropout layers in there as you want. They take a single argument: the dropout fraction.
+
+EmbraceLife @EmbraceLife 2月 28 22:10
+thank you! I will give it a try now
+by the way, - dropout: 0.75 does it mean keep 75% of neurons or drop 75% of them?
+
+EmbraceLife @EmbraceLife 2月 28 22:16
+tf.nn.dropout(x, 0.75) is to keep 75% neurons, so does - dropout: 0.75 right?
+
+EmbraceLife @EmbraceLife 2月 28 22:26
+I git clone the repo and pip install it as latest development version, but I still got the same error as the following ```yml
+ [INFO 2017-02-28 22:24:49,506 kur.kurfile:638] Parsing source: dlnd_p2.yml, included by top-level.
+[INFO 2017-02-28 22:24:49,520 kur.kurfile:79] Parsing Kurfile...
+Traceback (most recent call last):
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/bin/kur", line 11, in <module>
+    sys.exit(main())
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/__main__.py", line 269, in main
+    sys.exit(args.func(args) or 0)
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/__main__.py", line 47, in train
+    spec = parse_kurfile(args.kurfile, args.engine)
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/__main__.py", line 40, in parse_kurfile
+    spec.parse()
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/kurfile.py", line 120, in parse
+    self.engine, builtin['model'], stack, required=True)
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/kurfile.py", line 592, in _parse_model
+    for entry in self.data[key]
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/kurfile.py", line 592, in <listcomp>
+    for entry in self.data[key]
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/containers/container.py", line 71, in create_container_from_data
+    cls = Container.find_container_for_data(data)
+  File "/Users/Natsume/miniconda2/envs/dlnd-tf-lab/lib/python3.5/site-packages/kur/containers/container.py", line 82, in find_container_for_data
+    raise ValueError('No such container for data: {}'.format(data))
+ValueError: No such container for data: {'dropout': 0.75}
+
+EmbraceLife @EmbraceLife 2月 28 22:44
+I have rewritten udacity deep learning foundation project 2 code in kur, and I have 2 questions with links here question 1, question2, and I have a few questions in my kurfile, I marked them by ending with ###########. Could you have a look at them when you have time, thanks a lot Adam
+In the link, you will find project 2 I completed with tensorflow code and a code outline I wrote
+Have a great day!
+
+Adam Sypniewski @ajsyp 2月 28 22:54
+- dropout: X means drop X%.
+Your error is odd--dropout is definitely in there, and is tested by the unit tests, too. Are you sure you have the latest version? If you clone to repo, then you can install with pip install -e . once you cd into the checkout (you might want to uninstall the currently installed Kur first).
+
+Adam Sypniewski @ajsyp 2月 28 23:01
+Regarding your Kurfile batch questions. You have this in your Kurfile:
+train:
+  provider:
+    batch_size: 128
+    num_batches: 1000
+validate:
+  provider:
+    num_batches: 50
+For training, you will get a batch_size of 128, but you will truncate the epoch by only training on 1000 batches per epoch. For validation, you will truncate the validation by only validating on 50 batches. But because the provider is separate for training and validation, your validation provider will use the default batch size of 32, since you didn't specify anything different in the validation provider.
+The batch_size = 2, num_batchess = 1 is an internal thing. The easiest way to guarantee that a Keras model has finished compiling (because compiling happens in the background in a separate process) is to simply try to evaluate a small batch of data. TensorFlow's CTC loss function freaks out with batches of size < 2. This means that if I create a temporary data provider and feed exactly 2 batches into the system, then once it returns, I know the model is ready to go. You are just witnessing the log messages due to this.
+Also, don't worry about training on the two batches: it has zero impact on your weights (I stash the weights, evaluate on the two data points, and then restore the weights ).
+The CIFAR and MNIST data suppliers automatically do the one-hot + normalization for you. But you're right, generally: if you use your own data, you should make sure to one-hot and normalize.
+
+Adam Sypniewski @ajsyp 2月 28 23:06
+I think this answers all the questions, right?
+Interesting catch about the type: max. What, exactly, didn't work? I'd expect these to be equivalent: type: "max" and type: max, but I can see Jinja2 interpretting type: "{{ max }}"quite differently, because that's a Python expression inside the double-brackets.
+
+EmbraceLife @EmbraceLife 07:24
+editable version of kur is installed, previously I used latest development install, use pip install . missing -e
+now it runs - dropout
+
