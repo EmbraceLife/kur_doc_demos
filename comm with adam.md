@@ -353,3 +353,92 @@ EmbraceLife @EmbraceLife 07:24
 editable version of kur is installed, previously I used latest development install, use pip install . missing -e
 now it runs - dropout
 
+
+
+----------
+2017.3.2
+
+@EmbraceLife -- I want to try to answer the questions here, rather than on Hypothesis, so that other people visiting the Gitter channel can benefit from the answers.
+Is it worth spending time to learn about the data suppliers? Probably not. Just read the docs to see which data suppliers are available, and use one that makes sense for your application. If your field uses data in a format that isn't easily convertible to one of Kur's provided suppliers, please feel free to dig into the details of a supplier, and contribute a new supplier!
+Which backends does Kur support? At the moment, Kur works primarily with Keras as its backend. Keras, in turn, can use either Theano or TensorFlow. So by extension, Kur uses Theano or TensorFlow. What difference does it make? Very little, practically speaking. They'll work fine. Because Kur abstracts away many of the details of the backend, the biggest reason to favor one over another is speed and stability. Build your model using either backend, test it on both, and then stick with the one that has better speed for your problem. People have reported differences in speed for particular architectures, but it's hard to hands-down say, "X is better/faster."
+Should Kur include weight visualization to explain CNN? I view this as a slight change to the model. After all, Kur supports multiple outputs. So if you want to visualize a particular layer's activations, just output it as well! Then you can visualize it with any tool you want. If you are specificially thinking about explanation, then deconvolutional layers are the natrual extension that you could add. They aren't in Kur right now, but they could be added pretty easily if there is interest.
+Specifying the number of batches to use. If num_batches is empty/missing, then Kur will use all available batches and won't say anything special in the logs. If num_batches is greater than the number of batches actually available, then all batches will be used. However, the number of available batches is not always known in advance, and may not be known at creation of the data provider (which is when the log message is emitted); therefore, I do not intend to log the "actual" number when setting num_batches. Instead, the number of samples (if known) is shown in the progress bar. And yes, kur -vv mode has a ton of repetitive messages, but trust me, you can't have too many messages when debugging nasty, hidden issues. After all, -vv is intended to be DEBUG output, and not part of everyday usage.
+Automatic plotting. It is a feature! Do this in your training section:
+ hooks:
+   - plot: loss.png
+Or, for even more plots, try this:
+ hooks:
+   - plot:
+       loss_per_batch: loss1.png
+       loss_per_time: loss2.png
+       throughput_per_time: loss3.png
+Is randomization important? Yes. It is important to present data to your model in a different order, so that sample different gradients (and improve convergence). Whether or not you use only a part of the training set (e.g., with num_batches), you should still randomize. Randomization is disabled during validation (because 99.5% of the time, it isn't important to randomize during validation).
+Suggestions for Kurfiles. I think you have a good start. Here are two tips for you to think about. First, remember that you can override  variables in the "parent" Kurfile. So instead of doing this:
+
+```yml
+ ########
+ # Base
+
+ train:
+   provider:
+     num_batches: "{{ num_batches.train }}"
+ test:
+   provider:
+     num_batches: "{{ num_batches.test }}"
+
+ ########
+ # Derived
+
+ num_batches:
+   train: 10
+   test: 10
+```   
+   
+You could simply do this:
+
+```yml
+########
+# Base
+
+# Don't do anything special with num_batches
+
+########
+# Derived
+
+train:
+  provider:
+    num_batches: 10
+test:
+  provider:
+    num_batches: 10
+    
+```    
+They are very similar, but you have few lines in the second example. In fact, if you only override num_batches in provider, and you want to use the same num_batches for both training and testing, you could simplify the "Derived" version even more:
+
+```yml
+ train:
+   provider: &provider {num_batches: 10}
+ test:
+   provider: *provider
+```   
+The second tip is that you can use Jinja2 for handling default parameters. Let's say that you might override num_batches: {train: 10}, but not always. You can do this:
+
+```yml
+ ########
+ # Base
+
+ train:
+   provider:
+     num_batches: "{{ num_batches.train|default(default_batch_size) }}"
+
+ #######
+ # Derived
+
+ default_batch_size: 10
+ # And maybe you'll do this:
+ num_batches:
+   train: 20
+ 
+```
+
+Is automated hyperparameter search important? Yes, it is. But Kur is only a piece of the system that I've designed. In my head, it makes more sense for Kur to be responsible for training/evaluating a particular model, and then a supervisory layer which orchestrates multiple instances of Kur in order to do search. It is something that will be implemented and integrated with Kur at some point, because I do think it is important, but it isn't there yet.
