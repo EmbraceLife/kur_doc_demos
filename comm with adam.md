@@ -452,3 +452,78 @@ The second tip is that you can use Jinja2 for handling default parameters. Let's
 ```
 
 Is automated hyperparameter search important? Yes, it is. But Kur is only a piece of the system that I've designed. In my head, it makes more sense for Kur to be responsible for training/evaluating a particular model, and then a supervisory layer which orchestrates multiple instances of Kur in order to do search. It is something that will be implemented and integrated with Kur at some point, because I do think it is important, but it isn't there yet.
+
+
+**How to indent properly**
+To avoid rendering issues re: plot, consider these two examples, both of which are correct, but which replace the space character with a period (so mentally replace period . with space ):
+```yml
+ hooks:
+ ..- plot: loss.png
+and this:
+hooks:
+..- plot:
+......loss_per_batch: loss1.png
+......loss_per_time: loss2.png
+......throughput_per_time: loss3.png
+```
+
+**How to live on bleeding edge version forever**
+If you want to "live on the edge" with the latest version, do this:
+Clone the Kur repo (git clone https://github.com/deepgram/kur)
+cd into repo directory.
+Install using `pip install -e .` (probably want a virtualenv activated first)
+Now anytime you want to upgrade, just cd into the Kur repo directory and do `git pull`. Bam. Instantly got the newest version. No pip install required to make the update active.
+
+**plot weights and activations**
+Re: activation vs. weights. Gotcha. Activations are the outputs of the layer, given a particular input. They are the product (no pun intended) of the layer's weights and its inputs. It can be useful to understand and visualize both the weights and the activations.
+I think we could probably add weight visualization as a training hook. That way, people can use it if they want to incur the overhead of creating more plots, or just disable it very naturally.
+We'd need to pass the model itself into the hook (which is a small API change, not a big deal), and we'd need a backend-agnostic way to get the weight tensors. But could totally be done.
+
+
+**get kurfile format right**
+@EmbraceLife The plot error is likely related to an issue we resolved recently. Try upgrading Kur to the latest GitHub version and let me know if it is working. Also, make sure that the loss_per_batch, etc, are indented underneath plot.
+For using YAML anchors/nodes (like <<: * and &), you're absolutely right. It looks great. You can also use kur dump Kurfile.yml to have Kur print out a JSON form of the parsed Kurfile, which you can use to see exactly what Kur is going to use.
+
+**plotting weights, activations of each layer using kur**
+- Re: activation vs. weights. Gotcha. Activations are the outputs of the layer, given a particular input. They are the product (no pun intended) of the layer's weights and its inputs. It can be useful to understand and visualize both the weights and the activations.
+- I think we could probably add weight visualization as a training hook. That way, people can use it if they want to incur the overhead of creating more plots, or just disable it very naturally.
+- We'd need to pass the model itself into the hook (which is a small API change, not a big deal), and we'd need a backend-agnostic way to get the weight tensors. But could totally be done.
+- Also, Kur saves its weights as IDX files, which can be trivially loaded with the kur.utils.idx module. So you can experiment with plotting weights, and once you've got it working, can work on creating a hook to do it. Ultimately, you'll want to grab the weights right off the model rather than loading, but this'll at least give you a playground to try it with.
+- Just do an ls -al on the weights directory to see all the weight files (some might be hidden "dot files", just be aware).
+
+
+**implement every deep learning concept from ground up is not necessary**
+For the most part, I agree. The great thing about Kur is that you can focus on build cool things, rather than worrying about all the nitty-gritty graph, gradient/backprop, or even coding details. Do I agree that a proper understanding of DL does not require coding or backprop? Not exactly. I mean, do you need to understand electromagnetism to be a radio operator? Or do you need to understand engines to be a race-car drive? I guess not, but it really helps make you a more informed person. I think it's important to understand what backprop is, why it works, and it's generally a good idea to have a coding background so that you know how to "think algorithmically." But do you need to reapply that knowledge from the ground up every single time you want to use deep learning? Absolutely not! And that's where Kur comes in. If you're a total beginner, you can get a great start on seeing what DL can do for you. If you're an expert, you can use Kur to take care of all the boring, tedious, and error-prone details of DL for you. But it's good to still have a little knowledge about what goes on "under the hood."
+
+EmbraceLife @EmbraceLife 22:20
+it's generally a good idea to have a coding background so that you know how to "think algorithmically."
+well, I did code up backprop in Udacity program and think I really got it. Now, I don't think of codes of backprop, I think of computational graph visually in mind when talking about backprop. Is this "think algorithmically"?
+
+Adam Sypniewski @ajsyp 22:24
+By "think algorithmically," I'm referring to the pedagogical idea of being able to "think like a computer scientist." Lots of people struggle with the idea of programming, not quite understanding things like "If I say x = 2, then y = x, then y = 4, what is the value of x?" This isn't a problem with people; it's just another way of thinking. Computer scientists have learned/refined the ability to intuit what these concepts do.
+If you've programmed backprop, perfect! You know how it works! So why do it over and over? Don't. That's a boring way to live  So start using Kur instead, and leave the details to the boring people.
+lol
+And that's where Kur comes in: it rescues DL beginners and experts alike from having to revisit fundamentals every time they use deep learning.
+Let's just make it intuitive and focus on the concept, rather than having to rebuild a computational graph every single time.
+
+EmbraceLife @EmbraceLife 22:26
+ Yeah! This is exactly what I love about kur!
+but do you think it is necessary to code every concept like LSTM using just numpy or core tensorflow just once, before using Kur?
+
+Adam Sypniewski @ajsyp 22:28
+No, I don't.
+
+EmbraceLife @EmbraceLife 22:29
+Can I just read post and books and maybe even papers for concepts understanding rather than get understanding by reading or coding those concepts from ground up
+
+Adam Sypniewski @ajsyp 22:31
+There are so many different constructs, but all the fundamentals are the same: there are some linear transformations, and some non-linear transformations. And then you just use standard calculus to modify the parameters of those transformations to improve a regression model. That's it. Nothing special. It's usually fun and instructive to build your first MLP by hand using numpy, but there is no point in reinventing the wheel, over and over, for every new transformation someone comes up with.
+Sure, it's good to know how an RNN works, and an LSTM works, and a GRU works, and a ..., etc. But they are all just variations on the same fundamental concept. So once you understand those concepts, then doing things like you suggest--reading posts, books, papers--is a great way to continue your education.
+It's a fast moving field, and you don't want to get left behind by constantly rewriting every new concept.
+
+**How to deploy kur evaluation on web**
+Can Kur be deployed as a web service? Yep, you can still train your model as usual, but you'll want to run the evaluation piece using the Python API. See [deepgram/kur#23](https://github.com/deepgram/kur/issues/23) for some examples.
+
+**let kur to print out kurfile in json**
+The plot error is likely related to an issue we resolved recently. Try upgrading Kur to the latest GitHub version and let me know if it is working. Also, make sure that the loss_per_batch, etc, are indented underneath plot.
+For using YAML anchors/nodes (like <<: * and &), you're absolutely right. It looks great. You can also use `kur dump Kurfile.yml` to have Kur print out a JSON form of the parsed Kurfile, which you can use to see exactly what Kur is going to use.
