@@ -527,3 +527,40 @@ Can Kur be deployed as a web service? Yep, you can still train your model as usu
 **let kur to print out kurfile in json**
 The plot error is likely related to an issue we resolved recently. Try upgrading Kur to the latest GitHub version and let me know if it is working. Also, make sure that the loss_per_batch, etc, are indented underneath plot.
 For using YAML anchors/nodes (like <<: * and &), you're absolutely right. It looks great. You can also use `kur dump Kurfile.yml` to have Kur print out a JSON form of the parsed Kurfile, which you can use to see exactly what Kur is going to use.
+
+
+> 1. The dataset should respect the `path` setting. If it does not, then you have found a bug.
+2. You are welcome to use the MNIST data supplier for non-MNIST data, but it must be in the same [IDX format](https://webcache.googleusercontent.com/search?q=cache:stAVPik6onEJ:yann.lecun.com/exdb/mnist/+&cd=1&hl=en&ct=clnk&gl=us) as the native MNIST data.
+3. `sort_by: X` will sort the training examples by `X`, where `X` is the name of one of the data sources (data sources can include inputs, outputs, or intermediate source created by the suppliers).
+4. `checkpoint` saves the model parameters at the time that the checkpoint gets triggers. Checkpoint doesn't care if the model is performing well or poorly; it's job is simply to save the parameters. It will save the latest parameters, overwriting any other file at that location. You asked "every model at every checkpoint" --- there is only one model. Training simply changes its weights/parameters. Checkpoint will only save the most recent weights.
+5. You are correct about the validation hooks. The purpose is *not* to do tons of saving or anything, but instead to give the user the opportunity to "learn" something about the model. For example, the speech recognition example uses a `transcript` hook to print out an example of the current quality of transcription. I also make extensive use, personally, of the `slack` hook and `plot` hook, so that I can create plots automatically at each validation and have them posted to my team's Slack channel.
+6. Yes.
+7. To see the accuracy table, try evaluating the MNIST example: `kur evaluate mnist.yml`.
+
+
+> - Well, I should clarify: the MNIST data supplier can be used for other image recognition tasks, but it is currently hard-coded to 10 classes (the ten digits).
+>- What I would do is use a Python pickle for your data, and then write a quick hook that is more general. You can probably copy/paste the MNIST example to make it really easy.
+> - Just look at `kur/model/hooks/mnist_hook.py`. There is very little boilerplate code; most of the code in that file is just doing the accuracy calculation.
+> - If you are interested in using LeCun's IDX data format, keep in mind that Kur has good support for it: `kur/utils/idx.py`. You can use Kur to save/load IDX files easily.
+> - In fact, Kur currently uses the IDX format to store its logs and its weights.
+> - Which is why it's really easy to use any tools you want to open/view/modify/save the logs/weights.
+
+**QUESTION!**
+> - `kur/utils/idx.py` can load IDX file into numpy array, and write numpy array into IDX file. as there is no available functions to write images into IDX file, so I think to prepare my images into IDX file on my own is impossible. That's why you recommend it is better to save my images into pickle files, right? Another question is that I see `logs and weights` can be stored in IDX files but why exactly "it's really easy to use any tools you want to open/view/modify/save the logs/weights."?
+
+**ANSWERS**
+> -  Well, you still need to load your images, right? Just [load them into numpy arrays](http://stackoverflow.com/a/7769424/2200851). Don't store the raw image (complete with image headers, etc.). I recommend putting these numpy arrays into pickle files because pickles are just so flexible.
+> -  Also, it's easy to use any tools you want because the files are _so_ simple. Your project doesn't need any extra dependencies. You trivially write a load for nearly any language (just port the parser I wrote in Kur, for example). What other universal formats are available? Not many---for the most part, different fields all have their own formats. Pickles aren't easy to use outside Python, HDF5 files are really flexible, but often require non-Python dependencies (e.g., `libhdf5` on Ubuntu), CSV files are horrible and verbose (huge files) for complex or multidimensional data, YAML and JSON are too verbose (huge files), etc., etc.
+> -  So what's the next best thing? Just dump the raw binary data. It's super small/efficient, super fast to load, and basically every language / toolkit can handle binary files.
+> -  IDX files are just binary files with a super tiny header (data format and shape).
+> -  Moreover, IDX files can be appended to with almost zero cost. This is important for things like the logger, which you don't want to be slow (because otherwise it'd slow down the whole training process). Many other formats cannot be appended to: you need to load the entire file, append, and then resave it
+
+**Why use PyTorch backend**
+> **KUR UPDATE**
+- Kur now has a new backend: [PyTorch](http://pytorch.org)! PyTorch is the newest awesome deep learning library, and although it's still officially in "early beta," it's been gaining a lot of attention as an easy to use, fast library.    
+>**Advantages of PyTorch backend:**
+- *Fast*. You will likely notice that it is faster than Theano or TensorFlow for some models.
+- *NO COMPILE TIME*. That's right. Your models start training/testing/evaluating almost immediately. This cuts down significantly on development time that is otherwise wasted trying to figure out what shape your model needs to be.      
+> **Disadvantages:**      
+- There is *no* CTC loss function available yet, so the speech recognition example will not work with the PyTorch backend.
+
