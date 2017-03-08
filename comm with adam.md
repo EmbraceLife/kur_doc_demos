@@ -537,6 +537,26 @@ For using YAML anchors/nodes (like <<: * and &), you're absolutely right. It loo
 6. Yes.
 7. To see the accuracy table, try evaluating the MNIST example: `kur evaluate mnist.yml`.
 
+> ```yml
+  hooks:
+    - mnist 
+```
+is responsible to produce the following table, right?
+```
+LABEL     CORRECT   TOTAL     ACCURACY  
+0         921       980        94.0%
+1         1089      1135       95.9%
+2         18        1032        1.7%
+3         602       1010       59.6%
+4         745       982        75.9%
+5         368       892        41.3%
+6         815       958        85.1%
+7         888       1028       86.4%
+8         813       974        83.5%
+9         343       1009       34.0%
+ALL       6602      10000      66.0%
+
+```
 
 > - Well, I should clarify: the MNIST data supplier can be used for other image recognition tasks, but it is currently hard-coded to 10 classes (the ten digits).
 >- What I would do is use a Python pickle for your data, and then write a quick hook that is more general. You can probably copy/paste the MNIST example to make it really easy.
