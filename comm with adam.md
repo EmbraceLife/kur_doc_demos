@@ -537,11 +537,14 @@ For using YAML anchors/nodes (like <<: * and &), you're absolutely right. It loo
 6. Yes.
 7. To see the accuracy table, try evaluating the MNIST example: `kur evaluate mnist.yml`.
 
-> ```yml
+
+```yml
   hooks:
     - mnist 
 ```
+
 is responsible to produce the following table, right?
+
 ```
 LABEL     CORRECT   TOTAL     ACCURACY  
 0         921       980        94.0%
